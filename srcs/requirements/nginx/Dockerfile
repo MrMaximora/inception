@@ -3,6 +3,8 @@ FROM alpine:3.14
 RUN ["apk", "update"]
 RUN ["apk", "upgrade"]
 
+RUN ["apk" ,"add", "--no-cache", "nginx"]
+
 RUN ["rm", "-rf", "/etc/nginx/http.d/default.conf"]
 COPY ["conf/nginx.conf", "/etc/nginx/nginx.conf"]
 

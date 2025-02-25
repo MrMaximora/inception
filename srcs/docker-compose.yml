@@ -9,3 +9,17 @@ services:
     env_file: ".env"
     restart: always
     init: true
+  mariadb:
+    build: requirements/mariadb/.
+    container_name: mariadb
+    privileged: true
+    env_file: ".env"
+    restart: always
+    init: true
+  wordpress:
+    build: requirements/wordpress/.
+    container_name: wordpress
+    env_file: ".env"
+    privileged: true
+    restart: always
+    init: true
