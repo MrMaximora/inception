@@ -1,4 +1,4 @@
-FROM alpine:3.14
+FROM alpine:3.20
 
 RUN ["apk", "update"]
 RUN ["apk", "upgrade"]
@@ -33,3 +33,7 @@ RUN	["chmod", "+x", "wp-cli.phar"]
 RUN	["mv", "wp-cli.phar", "/usr/local/bin/wp.phar"]
 RUN	["mkdir", "-p", "/var/www"]
 RUN	["mkdir", "-p", "/var/www/html"]
+
+ADD ["tools/wordpress.sh", "."]
+RUN ["chmod", "+x", "wordpress.sh"]
+CMD	["./wordpress.sh"]

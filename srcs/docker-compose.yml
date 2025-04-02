@@ -1,25 +1,59 @@
-version: "3.8"
-
 services:
   nginx:
     build: requirements/nginx/.
     container_name: nginx
+    volumes:
+      - wordpress_data:/var/www/html
     ports:
       - "443:443"
     env_file: ".env"
+    networks:
+      inception:
     restart: always
     init: true
+    depends_on:
+      - wordpress
   mariadb:
     build: requirements/mariadb/.
     container_name: mariadb
-    privileged: true
-    env_file: ".env"
+    volumes:
+      - mariadb_data:/usr/local/mysql/var
+    networks:
+      inception:
     restart: always
     init: true
+    privileged: true
+    env_file: ".env"
+    expose:
+      - "3306"
   wordpress:
     build: requirements/wordpress/.
     container_name: wordpress
-    env_file: ".env"
-    privileged: true
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      inception:
     restart: always
     init: true
+    env_file: ".env"
+    privileged: true
+    depends_on:
+      - mariadb
+    expose:
+      - "9000"
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/maxouvra/data/database
+      o: bind         
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/maxouvra/data/web
+      o: bind
+networks:
+  inception:
+    driver: bridge
