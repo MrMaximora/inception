@@ -1,16 +1,12 @@
-FROM alpine:3.20
+FROM alpine:3.21
 
-RUN ["apk", "update"]
-RUN ["apk", "upgrade"]
+RUN apk update && apk add --no-cache nginx openssl
 
-RUN ["apk" ,"add", "--no-cache", "nginx"]
+COPY conf/nginx.conf /etc/nginx/nginx.conf
+COPY tools/ssl.sh /ssl.sh
 
-RUN ["rm", "-rf", "/etc/nginx/http.d/default.conf"]
-COPY ["conf/nginx.conf", "/etc/nginx/nginx.conf"]
+RUN mkdir -p /etc/nginx/ssl && chmod +x /ssl.sh && /ssl.sh
 
-RUN	[ "apk", "add", "openssl" ]
-RUN	[ "mkdir", "-p", "/etc/nginx/ssl" ]
-
-RUN ["openssl", "req", "-x509", "-nodes", "-out", "/etc/nginx/ssl/inception.crt", "-keyout", "/etc/nginx/ssl/inception.key", "-subj", "/C=FR/ST=Charente/L=Angouleme/O=42/OU=42/CN=Inception/UID=maxouvra"]
+EXPOSE 443
 
 CMD ["nginx", "-g", "daemon off;"]

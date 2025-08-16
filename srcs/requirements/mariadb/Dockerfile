@@ -1,10 +1,19 @@
-FROM alpine:3.20
+FROM alpine:3.21
 
-RUN ["apk", "update"]
-RUN ["apk", "upgrade"]
+# Installer MariaDB + PHP + bash
+RUN apk update && apk add --no-cache \
+    mariadb mariadb-client \
+    less
 
-RUN		["apk", "add", "mysql", "mariadb", "mariadb-client", "mariadb-server-utils"]
-RUN		["apk", "add", "openrc"]
+# Copier le script d'init
+COPY tools/init.sh /init.sh
+RUN chmod +x /init.sh
 
-RUN		["rm", "-f", "/etc/my.cnf.d/mariadb-server.cnf"]
-COPY	["conf/mariadb.conf", "/etc/my.cnf.d/mariadb-server.cnf"]
+# Créer le répertoire pour le socket MariaDB
+RUN mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
+
+USER mysql
+
+EXPOSE 3306
+
+ENTRYPOINT ["/init.sh"]

@@ -1,59 +1,62 @@
 services:
-  nginx:
-    build: requirements/nginx/.
-    container_name: nginx
-    volumes:
-      - wordpress_data:/var/www/html
-    ports:
-      - "443:443"
-    env_file: ".env"
-    networks:
-      inception:
-    restart: always
-    init: true
-    depends_on:
-      - wordpress
   mariadb:
-    build: requirements/mariadb/.
     container_name: mariadb
-    volumes:
-      - mariadb_data:/usr/local/mysql/var
-    networks:
-      inception:
+    build: ./requirements/mariadb
+    image: mariadb
     restart: always
-    init: true
-    privileged: true
-    env_file: ".env"
-    expose:
-      - "3306"
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -uroot -p$MYSQL_ROOT_PASSWORD -e 'SELECT 1'"]
+      interval: 2s
+      retries: 10
+
   wordpress:
-    build: requirements/wordpress/.
     container_name: wordpress
-    volumes:
-      - wordpress_data:/var/www/html
-    networks:
-      inception:
+    build: ./requirements/wordpress
+    image: wordpress
     restart: always
-    init: true
-    env_file: ".env"
-    privileged: true
+    env_file:
+      - .env
     depends_on:
       - mariadb
-    expose:
-      - "9000"
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - inception
+
+  nginx:
+    container_name: nginx
+    build: ./requirements/nginx
+    image: nginx
+    restart: always
+    ports:
+      - "443:443"
+    volumes:
+      - wp_data:/var/www/html
+    depends_on:
+      - wordpress
+    networks:
+      - inception
+
 volumes:
-  mariadb_data:
+  db_data:
     driver: local
     driver_opts:
       type: none
-      device: /home/maxouvra/data/database
-      o: bind         
-  wordpress_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /home/maxouvra/data/web
       o: bind
+      device: /home/maxouvra/data/db
+  wp_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/maxouvra/data/wp
+
 networks:
   inception:
     driver: bridge
