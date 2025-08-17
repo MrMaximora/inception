@@ -1,46 +1,35 @@
 #!/bin/sh
 set -e
 
-# Paths
-SOCKET="/run/mysqld/mysqld.sock"
-DATADIR="/var/lib/mysql"
+DATA_DIR="/usr/local/mysql/var"
 
-# Ensure runtime dir exists
-mkdir -p /run/mysqld
-chown -R mysql:mysql /run/mysqld
+if [ ! -d "$DATA_DIR/mysql" ]; then
+    chown -R mysql:mysql "$DATA_DIR"
 
-# Initialize database if empty
-if [ ! -d "$DATADIR/mysql" ]; then
-    echo "Initializing MariaDB data directory..."
-    mariadb-install-db --user=mysql --datadir="$DATADIR" --skip-test-db
+    # Initialize database without root password
+    mysqld --user=mysql --datadir="$DATA_DIR"
+
+    # Start MariaDB in the background
+    mysqld_safe --datadir="$DATA_DIR" &
+    pid="$!"
+
+    sleep 5
+
+    # Secure root everywhere
+    mariadb -h127.0.0.1 -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';"
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';"
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
+
+    # Create WordPress database and user
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';"
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
+
+    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "FLUSH PRIVILEGES;"
+
+    # Shutdown temporary MariaDB
+    mysqladmin -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" shutdown
 fi
 
-# Start MariaDB in background
-echo "Starting temporary MariaDB server..."
-mysqld --user=mysql --skip-networking=0 --skip-bind-address=0 --datadir="$DATADIR" &
-pid="$!"
-
-# Wait until MariaDB is ready (via UNIX socket, root only works here)
-until mariadb -u root --protocol=socket -e "SELECT 1" >/dev/null 2>&1; do
-    echo "Waiting for MariaDB server..."
-    sleep 2
-done
-echo "MariaDB is ready!"
-
-# Run setup SQL
-mariadb -u root --protocol=socket <<-EOSQL
-    CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
-    CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-    GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
-    ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-    FLUSH PRIVILEGES;
-EOSQL
-
-# Shutdown temporary server
-echo "Stopping temporary MariaDB..."
-kill -15 "$pid"
-wait "$pid"
-
-# Start MariaDB in foreground (normal mode)
-echo "Launching MariaDB in foreground..."
-exec mysqld
+# Start MariaDB in foreground
+exec mysqld_safe --datadir="$DATA_DIR"

@@ -22,7 +22,7 @@ fclean: clean
 	@if [ -n "$$(docker network ls -q -f "name=inception")" ]; then \
 		docker network rm $$(docker network ls -q -f "name=inception"); \
 	fi
-	sudo rm -rf $(DATA_DIR)/db $(DATA_DIR)/wp
+	docker run --rm -v $(DATA_DIR):/data debian bash -c "rm -rf /data/db /data/wp && mkdir -p /data/db /data/wp"
 
 
 re: fclean all

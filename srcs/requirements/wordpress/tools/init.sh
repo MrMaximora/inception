@@ -1,44 +1,49 @@
 #!/bin/sh
 set -e
 
-# Use correct PHP path for WP-CLI
-ln -sf /usr/bin/php82 /usr/bin/php
-
 # Wait for MariaDB to be ready
-echo "Attente de MariaDB..."
-until mariadb -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" >/dev/null 2>&1; do
-    echo "MariaDB non disponible, attente 2s..."
+echo "Waiting for MariaDB to be ready..."
+until mysql -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1;" >/dev/null 2>&1; do
+    echo "MariaDB not ready yet, sleeping..."
     sleep 2
 done
-echo "MariaDB disponible !"
+echo "MariaDB is ready!"
 
-# WordPress installation
+# Initialize WordPress if not already done
 if [ ! -f /var/www/html/wp-config.php ]; then
-    echo "Téléchargement et configuration de WordPress..."
-    curl -o wordpress.tar.gz https://wordpress.org/latest.tar.gz
-    tar -xzf wordpress.tar.gz --strip-components=1 -C /var/www/html
-    rm wordpress.tar.gz
+    cd /var/www/html
 
-    wp config create --path=/var/www/html \
+    # Download WordPress if not present
+    if [ ! -f index.php ]; then
+        php -d memory_limit=512M /usr/local/bin/wp.phar core download --allow-root
+    fi
+
+    # Create wp-config.php
+    /usr/local/bin/wp.phar config create \
         --dbname="$MYSQL_DATABASE" \
         --dbuser="$MYSQL_USER" \
         --dbpass="$MYSQL_PASSWORD" \
         --dbhost="$MYSQL_HOST" \
         --allow-root
 
-    wp core install --path=/var/www/html \
+    # Install WordPress
+    /usr/local/bin/wp.phar core install \
         --url="$DOMAIN_NAME" \
         --title="$WP_TITLE" \
         --admin_user="$WP_ADMIN_USER" \
         --admin_password="$WP_ADMIN_PASSWORD" \
         --admin_email="$WP_ADMIN_EMAIL" \
-        --skip-email \
         --allow-root
 
-    wp user create "$WP_USER" "$WP_USER_EMAIL" \
+    # Create additional WordPress user
+    /usr/local/bin/wp.phar user create \
+        "$WP_USER" "$WP_USER_EMAIL" \
+        --role=author \
         --user_pass="$WP_USER_PASSWORD" \
         --allow-root
+
+    cd /
 fi
 
-# Lancer PHP-FPM
-php-fpm82 -F
+# Start PHP-FPM in foreground
+exec php-fpm8.2 -F

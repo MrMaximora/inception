@@ -1,25 +1,39 @@
-FROM alpine:3.21
+# WordPress Dockerfile
+FROM debian:bookworm
 
-# Installer les paquets nécessaires
-RUN apk add --no-cache mariadb-client php82 php82-fpm php82-mysqli php82-curl php82-mbstring php82-json php82-openssl php82-phar bash curl tar
+# Install PHP 8.2 and required extensions, MariaDB client, wget, etc.
+RUN apt-get update && apt-get install -y \
+    php8.2 \
+    php8.2-fpm \
+    php8.2-mysql \
+    php8.2-curl \
+    php8.2-mbstring \
+    php8.2-phar \
+    mariadb-client \
+    wget \
+    tar \
+    sudo \
+    unzip \
+    less \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-# Installer WP-CLI
-RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+# Copy PHP-FPM config
+COPY conf/php.conf /etc/php/8.2/fpm/php-fpm.conf
+
+# Install WP-CLI
+RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
 
-# Définir le répertoire de travail
-WORKDIR /var/www/html
+# Create WordPress directory and set permissions
+RUN mkdir -p /var/www/html /var/log/php8.2 \
+    && chown -R www-data:www-data /var/www/html /var/log/php8.2
 
-# Copier scripts et conf
+# Copy init script
 COPY tools/init.sh /init.sh
-COPY conf/php.conf /etc/php82/php-fpm.conf
-
-# Rendre le script exécutable
 RUN chmod +x /init.sh
 
-# Exposer le port de PHP-FPM
 EXPOSE 9000
 
-# Entrypoint
 ENTRYPOINT ["/init.sh"]

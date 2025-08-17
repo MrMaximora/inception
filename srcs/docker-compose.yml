@@ -1,47 +1,55 @@
 services:
+    # Mandatory
   mariadb:
+    build: requirements/mariadb
     container_name: mariadb
-    build: ./requirements/mariadb
-    image: mariadb
-    restart: always
-    env_file:
-      - .env
+    env_file: ".env"
+    privileged: true
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/usr/local/mysql/var 
     networks:
-      - inception
+        inception:
+    restart: always
+    init: true
     healthcheck:
-      test: ["CMD-SHELL", "mariadb -uroot -p$MYSQL_ROOT_PASSWORD -e 'SELECT 1'"]
-      interval: 2s
-      retries: 10
+      test: "mariadb-admin ping"
+      interval: 5s
+      timeout: 1m
+      retries: 3
 
   wordpress:
+    build: requirements/wordpress
     container_name: wordpress
-    build: ./requirements/wordpress
-    image: wordpress
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - mariadb
+    env_file: ".env"
+    privileged: true
     volumes:
       - wp_data:/var/www/html
     networks:
-      - inception
+      inception:
+    restart: always
+    init: true
+    depends_on:
+      mariadb:
+        condition: service_healthy
 
   nginx:
+    build: requirements/nginx
     container_name: nginx
-    build: ./requirements/nginx
-    image: nginx
-    restart: always
     ports:
-      - "443:443"
+      - "8443:443"
+    env_file: ".env"
     volumes:
       - wp_data:/var/www/html
+    networks:
+      inception:
+    restart: always
+    init: true
     depends_on:
       - wordpress
-    networks:
-      - inception
+
+networks:
+  inception:
+    driver: bridge
 
 volumes:
   db_data:
@@ -56,7 +64,3 @@ volumes:
       type: none
       o: bind
       device: /home/maxouvra/data/wp
-
-networks:
-  inception:
-    driver: bridge
