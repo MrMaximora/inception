@@ -4,13 +4,11 @@ services:
     build: requirements/mariadb
     container_name: mariadb
     env_file: ".env"
-    privileged: true
     volumes:
       - db_data:/usr/local/mysql/var 
     networks:
         inception:
     restart: always
-    init: true
     healthcheck:
       test: "mariadb-admin ping"
       interval: 5s
@@ -21,13 +19,11 @@ services:
     build: requirements/wordpress
     container_name: wordpress
     env_file: ".env"
-    privileged: true
     volumes:
       - wp_data:/var/www/html
     networks:
       inception:
     restart: always
-    init: true
     depends_on:
       mariadb:
         condition: service_healthy
@@ -36,14 +32,13 @@ services:
     build: requirements/nginx
     container_name: nginx
     ports:
-      - "8443:443"
+      - "443:443"
     env_file: ".env"
     volumes:
       - wp_data:/var/www/html
     networks:
       inception:
     restart: always
-    init: true
     depends_on:
       - wordpress
 

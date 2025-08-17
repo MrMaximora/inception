@@ -1,35 +1,49 @@
 #!/bin/sh
-set -e
 
-DATA_DIR="/usr/local/mysql/var"
-
-if [ ! -d "$DATA_DIR/mysql" ]; then
-    chown -R mysql:mysql "$DATA_DIR"
-
-    # Initialize database without root password
-    mysqld --user=mysql --datadir="$DATA_DIR"
-
-    # Start MariaDB in the background
-    mysqld_safe --datadir="$DATA_DIR" &
-    pid="$!"
-
-    sleep 5
-
-    # Secure root everywhere
-    mariadb -h127.0.0.1 -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';"
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';"
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
-
-    # Create WordPress database and user
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';"
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
-
-    mariadb -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" -e "FLUSH PRIVILEGES;"
-
-    # Shutdown temporary MariaDB
-    mysqladmin -h127.0.0.1 -uroot -p"${MYSQL_ROOT_PASSWORD}" shutdown
+# see if mysql directory exists
+if [ -d "/run/mysqld" ]; then
+    echo "[i] mysqld already present, skipping creation"
+    chown -R mysql:mysql /run/mysqld || true
+else
+    echo "[i] mysqld not found, creating..."
+    mkdir -p /run/mysqld
+    chown -R mysql:mysql /run/mysqld || true
+    chmod 755 /run/mysqld
 fi
 
-# Start MariaDB in foreground
-exec mysqld_safe --datadir="$DATA_DIR"
+# Checks if MySQL database is already initialized
+if [ -d "/var/lib/mysql/${MYSQL_DATABASE}" ]; then
+    echo "[i] MySQL directory already present, skipping creation"
+else
+    echo "[i] Initializing database..."
+    chown -R mysql:mysql /var/lib/mysql
+
+# Create a temportaire file to initialize the database 
+    tfile=$(mktemp)
+    if [ ! -f "$tfile" ]; then
+        echo "Failed to create temp file"
+        exit 1
+    fi
+
+    # Configuration database
+    # Create User
+    cat << EOF > $tfile
+USE mysql;
+FLUSH PRIVILEGES;
+GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
+GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
+CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
+CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
+FLUSH PRIVILEGES;
+EOF
+
+    #Initialize database
+    echo "[i] Starting temporary MariaDB server..."
+    /usr/sbin/mysqld --user=mysql --bootstrap < $tfile
+    rm -f $tfile
+fi
+
+echo "[i] MariaDB setup complete. Starting MariaDB server..."
+# run database
+exec /usr/sbin/mysqld --user=mysql --console --skip-networking=0 --bind-address=0.0.0.0

@@ -1,4 +1,3 @@
-NAME = inception
 DATA_DIR = /home/maxouvra/data
 
 all: up
@@ -15,16 +14,6 @@ down:
 clean: down
 	docker system prune -af --volumes
 
-fclean: clean
-	@if [ -n "$$(docker volume ls -q -f "name=srcs")" ]; then \
-		docker volume rm $$(docker volume ls -q -f "name=srcs"); \
-	fi
-	@if [ -n "$$(docker network ls -q -f "name=inception")" ]; then \
-		docker network rm $$(docker network ls -q -f "name=inception"); \
-	fi
-	docker run --rm -v $(DATA_DIR):/data debian bash -c "rm -rf /data/db /data/wp && mkdir -p /data/db /data/wp"
+re: clean all
 
-
-re: fclean all
-
-.PHONY: all up down clean fclean re
+.PHONY: all up down clean re

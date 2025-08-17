@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     php8.2-mbstring \
     php8.2-phar \
     mariadb-client \
-    wget \
+    curl \
     tar \
     sudo \
     unzip \
@@ -22,9 +22,10 @@ RUN apt-get update && apt-get install -y \
 COPY conf/php.conf /etc/php/8.2/fpm/php-fpm.conf
 
 # Install WP-CLI
-RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
-    && chmod +x wp-cli.phar \
-    && mv wp-cli.phar /usr/local/bin/wp
+# Installer WP-CLI
+RUN curl -o /usr/local/bin/wp.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && chmod +x /usr/local/bin/wp.phar \
+    && ln -s /usr/local/bin/wp.phar /usr/local/bin/wp
 
 # Create WordPress directory and set permissions
 RUN mkdir -p /var/www/html /var/log/php8.2 \
