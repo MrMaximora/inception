@@ -12,5 +12,7 @@ RUN chmod +x /init.sh
 
 USER root
 
+EXPOSE 3306
+
 # Start MariaDB via your init script
 ENTRYPOINT ["/init.sh"]

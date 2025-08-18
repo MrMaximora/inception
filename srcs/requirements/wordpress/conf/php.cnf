@@ -1,3 +1,5 @@
+[global]
+daemonize = no
 [www]
 listen = 9000
 pm = dynamic

@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy PHP-FPM config
-COPY conf/php.conf /etc/php/8.2/fpm/php-fpm.conf
+COPY conf/php.cnf /etc/php/8.2/fpm/php-fpm.cnf
 
 # Install WP-CLI
 # Installer WP-CLI

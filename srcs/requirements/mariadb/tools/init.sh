@@ -1,15 +1,9 @@
 #!/bin/sh
 
-# see if mysql directory exists
-if [ -d "/run/mysqld" ]; then
-    echo "[i] mysqld already present, skipping creation"
-    chown -R mysql:mysql /run/mysqld || true
-else
-    echo "[i] mysqld not found, creating..."
-    mkdir -p /run/mysqld
-    chown -R mysql:mysql /run/mysqld || true
-    chmod 755 /run/mysqld
-fi
+# Ensure /run/mysqld exists
+mkdir -p /run/mysqld
+chown -R mysql:mysql /run/mysqld
+chmod 755 /run/mysqld
 
 # Checks if MySQL database is already initialized
 if [ -d "/var/lib/mysql/${MYSQL_DATABASE}" ]; then
@@ -31,7 +25,7 @@ else
 USE mysql;
 FLUSH PRIVILEGES;
 GRANT ALL ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
-GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
+GRANT ALL ON *.* TO 'root'@'%'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
 CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
 CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
 GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
@@ -40,9 +34,11 @@ EOF
 
     #Initialize database
     echo "[i] Starting temporary MariaDB server..."
-    /usr/sbin/mysqld --user=mysql --bootstrap < $tfile
+    /usr/sbin/mysqld --user=mysql < $tfile
     rm -f $tfile
 fi
+
+mysql_install_db --user=mysql --ldata=/var/lib/mysql 2>/dev/null || true
 
 echo "[i] MariaDB setup complete. Starting MariaDB server..."
 # run database

@@ -18,8 +18,7 @@ http {
         }
 
         location ~ \.php$ {
-            include fastcgi_params;
-            include snippet/fastcgi-php.conf;
+            include fastcgi.conf;
             fastcgi_pass wordpress:9000;
         }
     }
