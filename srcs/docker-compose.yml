@@ -22,10 +22,11 @@ services:
     image: wordpress
     env_file: ".env"
     environment:
-      WORDPRESS_DB_HOST: ${MYSQL_HOST}
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      environment:
+      WORDPRESS_DB_HOST: ${MARIADB_HOST}
+      WORDPRESS_DB_NAME: ${MARIADB_DATABASE}
+      WORDPRESS_DB_USER: ${MARIADB_USER}
+      WORDPRESS_DB_PASSWORD: ${MARIADB_PASSWORD}
     volumes:
       - wp_data:/var/www/html
     networks:

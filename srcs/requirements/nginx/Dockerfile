@@ -11,7 +11,7 @@ RUN  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 RUN mkdir -p /var/run/nginx /var/www/html
 # Copy configs and scripts
-COPY conf/nginx.cnf /etc/nginx/nginx.cnf
+COPY conf/nginx.conf /etc/nginx/nginx.conf
 
 RUN chmod -R 755 /var/www/html && \
     chown -R www-data:www-data /var/www/html

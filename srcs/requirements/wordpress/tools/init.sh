@@ -1,22 +1,30 @@
 #!/bin/sh
-set -e
 
-# Wait for MariaDB to be ready
-echo "Waiting for MariaDB to be ready..."
-until mysql -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1;" >/dev/null 2>&1; do
-    echo "MariaDB not ready yet, sleeping..."
-    sleep 2
-done
-echo "MariaDB is ready!"
+echo if mysqladmin ping -h "${MARIADB_HOST}" -u "${MARIADB_USER}" "--password=${MARIADB_PASSWORD}" --silent
 
-# Initialize WordPress if not already done
-if [ ! -f /var/www/html/wp-config.php ]; then
-    cd /var/www/html
+mkdir -p /run/php
 
-    # Download WordPress if not present
-    if [ ! -f index.php ]; then
-        php -d memory_limit=512M /usr/local/bin/wp.phar core download --allow-root
+# to wait until MariaDB is available before proceeding
+echo "Waiting for MariaDB to be available..."
+for i in {1..60}; do
+    if mysqladmin ping -h "${MARIADB_HOST}" -u "${MARIADB_USER}" "--password=${MARIADB_PASSWORD}" --silent; then
+        echo "MariaDB is up."
+        break
+    else
+        echo "MariaDB not available, retrying in 10 seconds..."
+        sleep 10
     fi
+done
+
+# Download wordPress files 
+if [ ! -f /usr/local/bin/wp ]; then
+    echo "Downloading WP-CLI..."
+    curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    chmod +x wp-cli.phar
+    mv wp-cli.phar /usr/local/bin/wp
+fi
+
+    wp core download --allow-root
 
     # Create wp-config.php
     /usr/local/bin/wp.phar config create \
@@ -42,7 +50,7 @@ if [ ! -f /var/www/html/wp-config.php ]; then
         --user_pass="$WP_USER_PASSWORD" \
         --allow-root
 
-    cd /
+    chmod -R 775 wp-content
 fi
 
 # Start PHP-FPM in foreground

@@ -10,8 +10,6 @@ RUN apt-get update && \
 COPY tools/init.sh /init.sh
 RUN chmod +x /init.sh
 
-USER root
-
 EXPOSE 3306
 
 # Start MariaDB via your init script
