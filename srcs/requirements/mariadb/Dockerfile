@@ -1,16 +1,18 @@
 FROM debian:bookworm
 
-# Install MariaDB and OpenRC
-RUN apt-get update && \
-    apt-get upgrade && \
-    apt-get install -y mariadb-server \
+# Install MariaDB
+RUN apt-get update && apt-get install -y mariadb-server mariadb-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy initialization script
-COPY tools/init.sh /init.sh
-RUN chmod +x /init.sh
+# Copy init script
+COPY ./tools/init.sh /usr/local/bin/init.sh
+RUN chmod +x /usr/local/bin/init.sh
 
+# Create mysql user & group if not already in image
+RUN chown -R mysql:mysql /var/lib/mysql
+
+# Expose MariaDB port
 EXPOSE 3306
 
-# Start MariaDB via your init script
-ENTRYPOINT ["/init.sh"]
+# Run init script (entrypoint)
+ENTRYPOINT ["/usr/local/bin/init.sh"]

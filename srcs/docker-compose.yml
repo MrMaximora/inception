@@ -11,10 +11,11 @@ services:
         inception:
     restart: always
     healthcheck:
-      test: "mariadb-admin ping"
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 5s
-      timeout: 1m
-      retries: 3
+      timeout: 10s
+      retries: 5
+
 
   wordpress:
     build: requirements/wordpress
@@ -22,7 +23,6 @@ services:
     image: wordpress
     env_file: ".env"
     environment:
-      environment:
       WORDPRESS_DB_HOST: ${MARIADB_HOST}
       WORDPRESS_DB_NAME: ${MARIADB_DATABASE}
       WORDPRESS_DB_USER: ${MARIADB_USER}
