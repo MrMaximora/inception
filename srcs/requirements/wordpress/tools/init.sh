@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 mkdir -p /run/php
 
@@ -14,39 +13,45 @@ for i in $(seq 1 60); do
     fi
 done
 
-# Download WP-CLI if not already installed
 if [ ! -f /usr/local/bin/wp ]; then
     echo "Downloading WP-CLI..."
     curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /usr/local/bin/wp
 fi
 
-if [ ! -f /var/www/html/wp-config.php ]; then
+if ! wp core is-installed --allow-root --path=/var/www/html; then
     echo "Installing WordPress..."
-    wp core download --allow-root
+    wp core download --allow-root --path=/var/www/html
+
     wp config create \
         --dbname="$MARIADB_DATABASE" \
         --dbuser="$MARIADB_USER" \
         --dbpass="$MARIADB_PASSWORD" \
         --dbhost="$MARIADB_HOST" \
+        --path=/var/www/html \
         --allow-root
+
     wp core install \
         --url="$DOMAIN_NAME" \
         --title="$WP_TITLE" \
         --admin_user="$WP_ADMIN_USER" \
         --admin_password="$WP_ADMIN_PASSWORD" \
         --admin_email="$WP_ADMIN_EMAIL" \
+        --path=/var/www/html \
         --allow-root
+
     wp user create \
         "$WP_USER" "$WP_USER_EMAIL" \
         --role=author \
         --user_pass="$WP_USER_PASSWORD" \
+        --path=/var/www/html \
         --allow-root
-    chmod -R 775 wp-content
-else
-    echo "WordPress already installed, skipping setup."
-fi
 
+    chmod -R 775 /var/www/html/wp-content
+else
+    echo "WordPress is already installed — skipping setup."
+fi
 
 # Start PHP-FPM in foreground
 exec php-fpm8.2 -F
+
